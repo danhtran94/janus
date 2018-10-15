@@ -19,19 +19,19 @@ func URLParam(r *http.Request, key string) string {
 // Router defines the basic methods for a router
 type Router interface {
 	ServeHTTP(w http.ResponseWriter, req *http.Request)
-	Handle(method string, path string, handler http.HandlerFunc, handlers ...Constructor)
-	Any(path string, handler http.HandlerFunc, handlers ...Constructor)
-	GET(path string, handler http.HandlerFunc, handlers ...Constructor)
-	POST(path string, handler http.HandlerFunc, handlers ...Constructor)
-	PUT(path string, handler http.HandlerFunc, handlers ...Constructor)
-	DELETE(path string, handler http.HandlerFunc, handlers ...Constructor)
-	PATCH(path string, handler http.HandlerFunc, handlers ...Constructor)
-	HEAD(path string, handler http.HandlerFunc, handlers ...Constructor)
-	OPTIONS(path string, handler http.HandlerFunc, handlers ...Constructor)
-	TRACE(path string, handler http.HandlerFunc, handlers ...Constructor)
-	CONNECT(path string, handler http.HandlerFunc, handlers ...Constructor)
-	Group(path string) Router
-	Use(handlers ...Constructor) Router
+	Handle(host, method string, path string, handler http.HandlerFunc, handlers ...Constructor)
+	Any(host, path string, handler http.HandlerFunc, handlers ...Constructor)
+	GET(host, path string, handler http.HandlerFunc, handlers ...Constructor)
+	POST(host, path string, handler http.HandlerFunc, handlers ...Constructor)
+	PUT(host, path string, handler http.HandlerFunc, handlers ...Constructor)
+	DELETE(host, path string, handler http.HandlerFunc, handlers ...Constructor)
+	PATCH(host, path string, handler http.HandlerFunc, handlers ...Constructor)
+	HEAD(host, path string, handler http.HandlerFunc, handlers ...Constructor)
+	OPTIONS(host, path string, handler http.HandlerFunc, handlers ...Constructor)
+	TRACE(host, path string, handler http.HandlerFunc, handlers ...Constructor)
+	CONNECT(host, path string, handler http.HandlerFunc, handlers ...Constructor)
+	Group(host, path string, subRoute func(chi.Router)) Router
+	Use(host string, handlers ...Constructor) Router
 
 	RoutesCount() int
 }

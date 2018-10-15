@@ -3,6 +3,8 @@ package basic
 import (
 	"errors"
 
+	"github.com/go-chi/chi"
+
 	"github.com/hellofresh/janus/pkg/plugin"
 	"github.com/hellofresh/janus/pkg/proxy"
 	"github.com/hellofresh/janus/pkg/router"
@@ -63,14 +65,13 @@ func onStartup(event interface{}) error {
 	}
 
 	handlers := NewHandler(repo)
-	group := adminRouter.Group("/credentials/basic_auth")
-	{
-		group.GET("/", handlers.Index())
-		group.POST("/", handlers.Create())
-		group.GET("/{username}", handlers.Show())
-		group.PUT("/{username}", handlers.Update())
-		group.DELETE("/{username}", handlers.Delete())
-	}
+	adminRouter.Group("*", "/credentials/basic_auth", func(r chi.Router) {
+		r.Get("/", handlers.Index())
+		r.Post("/", handlers.Create())
+		r.Get("/{username}", handlers.Show())
+		r.Put("/{username}", handlers.Update())
+		r.Delete("/{username}", handlers.Delete())
+	})
 
 	return nil
 }
