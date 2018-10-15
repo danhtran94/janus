@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"regexp"
 	"strings"
 
 	"github.com/go-chi/chi"
@@ -61,8 +62,12 @@ func createDirector(proxyDefinition *Definition, balancer balancer.Balancer, sta
 			path = singleJoiningSlash(target.Path, req.URL.Path)
 			listenPath := matcher.Extract(proxyDefinition.ListenPath)
 
+			regx := regexp.MustCompile(`\/({\w+:?.*})?\/`)
+			stripPattern := regx.ReplaceAllString(listenPath, "/.*/")
+
 			log.WithField("listen_path", listenPath).Debug("Stripping listen path")
-			path = strings.Replace(path, listenPath, "", 1)
+			path = regexp.MustCompile(stripPattern).ReplaceAllString(path, "")
+
 			if !strings.HasSuffix(target.Path, "/") && strings.HasSuffix(path, "/") {
 				path = path[:len(path)-1]
 			}
