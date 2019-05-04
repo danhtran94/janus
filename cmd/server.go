@@ -5,7 +5,6 @@ import (
 
 	"github.com/hellofresh/janus/pkg/api"
 	"github.com/hellofresh/janus/pkg/errors"
-	"github.com/hellofresh/janus/pkg/opentracing"
 	"github.com/hellofresh/janus/pkg/server"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -53,16 +52,19 @@ func NewServerStartCmd(ctx context.Context) *cobra.Command {
 
 // RunServerStart is the run command to start Janus
 func RunServerStart(ctx context.Context, opts *ServerStartOptions) error {
+	// all the logging configurations are initialised in initLog() later,
+	// but we try to initialise Writer (STDIN/STDERR/etc.) as early as possible manually
+	// to avoid loosing logs in systems heavily relying on them (e.g. running in docker)
+	initLogWriterEarly()
+
 	log.WithField("version", version).Info("Janus starting...")
 
 	initConfig()
 	initLog()
 	initStatsClient()
+	initStatsExporter()
+	initTracingExporter()
 
-	tracingFactory := opentracing.New(globalConfig.Tracing)
-	tracingFactory.Setup()
-
-	defer tracingFactory.Close()
 	defer statsClient.Close()
 	defer globalConfig.Log.Flush()
 

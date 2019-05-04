@@ -1,9 +1,13 @@
 package cb
 
 import (
+	"net/url"
+	"strings"
+
 	"github.com/afex/hystrix-go/hystrix"
 	"github.com/afex/hystrix-go/hystrix/metric_collector"
 	"github.com/afex/hystrix-go/plugins"
+	"github.com/asaskevich/govalidator"
 	"github.com/hellofresh/janus/pkg/plugin"
 	"github.com/hellofresh/janus/pkg/proxy"
 	"github.com/pkg/errors"
@@ -11,8 +15,7 @@ import (
 )
 
 const (
-	statsdPrefix = "hystrix"
-	pluginName   = "cb"
+	pluginName = "cb"
 )
 
 // Config represents the Body Limit configuration
@@ -26,7 +29,8 @@ func init() {
 	plugin.RegisterEventHook(plugin.StartupEvent, onStartup)
 	plugin.RegisterEventHook(plugin.AdminAPIStartupEvent, onAdminAPIStartup)
 	plugin.RegisterPlugin(pluginName, plugin.Plugin{
-		Action: setupCB,
+		Action:   setupCB,
+		Validate: validateConfig,
 	})
 }
 
@@ -52,6 +56,16 @@ func setupCB(def *proxy.RouterDefinition, rawConfig plugin.Config) error {
 
 	def.AddMiddleware(NewCBMiddleware(c))
 	return nil
+}
+
+func validateConfig(rawConfig plugin.Config) (bool, error) {
+	var config Config
+	err := plugin.Decode(rawConfig, &config)
+	if err != nil {
+		return false, err
+	}
+
+	return govalidator.ValidateStruct(config)
 }
 
 func onAdminAPIStartup(event interface{}) error {
@@ -85,9 +99,15 @@ func onStartup(event interface{}) error {
 	}
 
 	logger.WithField("metrics_dsn", e.Config.Stats.DSN).Debug("Statsd metrics enabled")
+
+	dsnURL, err := url.Parse(e.Config.Stats.DSN)
+	if err != nil {
+		return errors.Wrap(err, "could not parse stats dsn")
+	}
+
 	c, err := plugins.InitializeStatsdCollector(&plugins.StatsdCollectorConfig{
-		StatsdAddr: e.Config.Stats.DSN,
-		Prefix:     statsdPrefix,
+		StatsdAddr: dsnURL.Host,
+		Prefix:     strings.Trim(dsnURL.Path, "/"),
 	})
 	if err != nil {
 		return errors.Wrap(err, "could not initialize statsd client")

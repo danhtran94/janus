@@ -6,10 +6,10 @@ import (
 	"net/http"
 
 	"github.com/hellofresh/janus/pkg/errors"
-	"github.com/hellofresh/janus/pkg/opentracing"
 	"github.com/hellofresh/janus/pkg/render"
 	"github.com/hellofresh/janus/pkg/router"
 	log "github.com/sirupsen/logrus"
+	"go.opencensus.io/trace"
 )
 
 // Handler is the api rest handlers
@@ -25,12 +25,12 @@ func NewHandler(repo Repository) *Handler {
 // Index is the find all handler
 func (c *Handler) Index() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		span := opentracing.FromContext(r.Context(), "datastore.user.FindAll")
+		_, span := trace.StartSpan(r.Context(), "repo.FindAll")
 		data, err := c.repo.FindAll()
-		span.Finish()
+		span.End()
 
 		if err != nil {
-			errors.Handler(w, err)
+			errors.Handler(w, r, err)
 			return
 		}
 
@@ -42,12 +42,12 @@ func (c *Handler) Index() http.HandlerFunc {
 func (c *Handler) Show() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		username := router.URLParam(r, "username")
-		span := opentracing.FromContext(r.Context(), "datastore.user.FindByUsername")
+		_, span := trace.StartSpan(r.Context(), "repo.Show")
 		data, err := c.repo.FindByUsername(username)
-		span.Finish()
+		span.End()
 
 		if err != nil {
-			errors.Handler(w, err)
+			errors.Handler(w, r, err)
 			return
 		}
 
@@ -61,32 +61,32 @@ func (c *Handler) Update() http.HandlerFunc {
 		var err error
 
 		username := router.URLParam(r, "username")
-		span := opentracing.FromContext(r.Context(), "datastore.user.FindByUsername")
+		_, span := trace.StartSpan(r.Context(), "repo.FindByUsername")
 		user, err := c.repo.FindByUsername(username)
-		span.Finish()
+		span.End()
 
 		if user == nil {
-			errors.Handler(w, ErrUserNotFound)
+			errors.Handler(w, r, ErrUserNotFound)
 			return
 		}
 
 		if err != nil {
-			errors.Handler(w, err)
+			errors.Handler(w, r, err)
 			return
 		}
 
 		err = json.NewDecoder(r.Body).Decode(user)
 		if err != nil {
-			errors.Handler(w, err)
+			errors.Handler(w, r, err)
 			return
 		}
 
-		span = opentracing.FromContext(r.Context(), "datastore.user.Add")
+		_, span = trace.StartSpan(r.Context(), "repo.Add")
 		err = c.repo.Add(user)
-		span.Finish()
+		span.End()
 
 		if err != nil {
-			errors.Handler(w, errors.New(http.StatusBadRequest, err.Error()))
+			errors.Handler(w, r, errors.New(http.StatusBadRequest, err.Error()))
 			return
 		}
 
@@ -101,26 +101,26 @@ func (c *Handler) Create() http.HandlerFunc {
 
 		err := json.NewDecoder(r.Body).Decode(user)
 		if nil != err {
-			errors.Handler(w, err)
+			errors.Handler(w, r, err)
 			return
 		}
 
-		span := opentracing.FromContext(r.Context(), "datastore.users.Exists")
+		_, span := trace.StartSpan(r.Context(), "repo.FindByUsername")
 		_, err = c.repo.FindByUsername(user.Username)
-		span.Finish()
+		span.End()
 
 		if err != ErrUserNotFound {
-			log.WithError(err).Warn("An error occurrend when looking for an user")
-			errors.Handler(w, ErrUserExists)
+			log.WithError(err).Warn("An error occurred when looking for an user")
+			errors.Handler(w, r, ErrUserExists)
 			return
 		}
 
-		span = opentracing.FromContext(r.Context(), "datastore.users.Add")
+		_, span = trace.StartSpan(r.Context(), "repo.Add")
 		err = c.repo.Add(user)
-		span.Finish()
+		span.End()
 
 		if err != nil {
-			errors.Handler(w, errors.New(http.StatusBadRequest, err.Error()))
+			errors.Handler(w, r, errors.New(http.StatusBadRequest, err.Error()))
 			return
 		}
 
@@ -134,12 +134,12 @@ func (c *Handler) Delete() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		username := router.URLParam(r, "username")
 
-		span := opentracing.FromContext(r.Context(), "datastore.users.Remove")
+		_, span := trace.StartSpan(r.Context(), "repo.Remove")
 		err := c.repo.Remove(username)
-		span.Finish()
+		span.End()
 
 		if err != nil {
-			errors.Handler(w, err)
+			errors.Handler(w, r, err)
 			return
 		}
 

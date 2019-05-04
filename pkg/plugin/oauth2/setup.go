@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"net/url"
 
-	"github.com/go-chi/chi"
-
+	"github.com/asaskevich/govalidator"
 	"github.com/globalsign/mgo"
+	"github.com/go-chi/chi"
 	"github.com/hellofresh/janus/pkg/config"
 	"github.com/hellofresh/janus/pkg/jwt"
 	"github.com/hellofresh/janus/pkg/plugin"
@@ -32,7 +32,8 @@ func init() {
 	plugin.RegisterEventHook(plugin.ReloadEvent, onReload)
 	plugin.RegisterEventHook(plugin.AdminAPIStartupEvent, onAdminAPIStartup)
 	plugin.RegisterPlugin("oauth2", plugin.Plugin{
-		Action: setupOAuth2,
+		Action:   setupOAuth2,
+		Validate: validateConfig,
 	})
 }
 
@@ -140,6 +141,16 @@ func setupOAuth2(def *proxy.RouterDefinition, rawConfig plugin.Config) error {
 	def.AddMiddleware(NewRevokeRulesMiddleware(jwt.NewParser(jwt.NewParserConfig(oauthServer.TokenStrategy.Leeway, signingMethods...)), oauthServer.AccessRules))
 
 	return nil
+}
+
+func validateConfig(rawConfig plugin.Config) (bool, error) {
+	var config Config
+	err := plugin.Decode(rawConfig, &config)
+	if err != nil {
+		return false, err
+	}
+
+	return govalidator.ValidateStruct(config)
 }
 
 func getManager(oauthServer *OAuth, oAuthServerName string) (Manager, error) {

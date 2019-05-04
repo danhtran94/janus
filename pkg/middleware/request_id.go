@@ -1,10 +1,10 @@
 package middleware
 
 import (
-	"context"
 	"net/http"
 
-	"github.com/satori/go.uuid"
+	"github.com/gofrs/uuid"
+	"github.com/hellofresh/janus/pkg/observability"
 )
 
 type reqIDKeyType int
@@ -19,28 +19,12 @@ func RequestID(handler http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		requestID := r.Header.Get(requestIDHeader)
 		if requestID == "" {
-			requestID = uuid.NewV4().String()
+			requestID = uuid.Must(uuid.NewV4()).String()
 		}
 
 		r.Header.Set(requestIDHeader, requestID)
 		w.Header().Set(requestIDHeader, requestID)
 
-		ctx := r.Context()
-		ctx = context.WithValue(ctx, reqIDKey, requestID)
-
-		handler.ServeHTTP(w, r.WithContext(ctx))
+		handler.ServeHTTP(w, r.WithContext(observability.RequestIDToContext(r.Context(), requestID)))
 	})
-}
-
-// RequestIDFromContext tries to extract request ID from context if present, otherwise returns empty string
-func RequestIDFromContext(ctx context.Context) string {
-	if ctx == nil {
-		panic("Can not get request ID from empty context")
-	}
-
-	if requestID, ok := ctx.Value(reqIDKey).(string); ok {
-		return requestID
-	}
-
-	return ""
 }
