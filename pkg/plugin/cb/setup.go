@@ -83,7 +83,7 @@ func onAdminAPIStartup(event interface{}) error {
 	hystrixStreamHandler := hystrix.NewStreamHandler()
 	hystrixStreamHandler.Start()
 
-	e.Router.GET("/hystrix", hystrixStreamHandler.ServeHTTP)
+	e.Router.GET("*", "/hystrix", hystrixStreamHandler.ServeHTTP)
 	return nil
 }
 

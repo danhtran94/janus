@@ -85,11 +85,23 @@ func (p *Register) doRegister(listenPath string, def *RouterDefinition, handler 
 		log.WithField("listen_path", listenPath).
 			Error("Route listen path must begin with '/'. Skipping invalid route.")
 	} else {
-		for _, method := range def.Methods {
-			if strings.ToUpper(method) == methodAll {
-				p.router.Any(listenPath, handler.ServeHTTP, def.middleware...)
-			} else {
-				p.router.Handle(strings.ToUpper(method), listenPath, handler.ServeHTTP, def.middleware...)
+		if hostNum := len(def.Hosts); hostNum > 0 {
+			for _, hostName := range def.Hosts {
+				for _, method := range def.Methods {
+					if strings.ToUpper(method) == methodAll {
+						p.router.Any(hostName, listenPath, handler.ServeHTTP, def.middleware...)
+					} else {
+						p.router.Handle(hostName, strings.ToUpper(method), listenPath, handler.ServeHTTP, def.middleware...)
+					}
+				}
+			}
+		} else {
+			for _, method := range def.Methods {
+				if strings.ToUpper(method) == methodAll {
+					p.router.Any("*", listenPath, handler.ServeHTTP, def.middleware...)
+				} else {
+					p.router.Handle("*", strings.ToUpper(method), listenPath, handler.ServeHTTP, def.middleware...)
+				}
 			}
 		}
 	}

@@ -28,6 +28,7 @@ gin-bin
 
 _book
 /vendor
+.vendor-new
 node_modules/
 
 # HF config files

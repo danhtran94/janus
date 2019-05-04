@@ -277,10 +277,11 @@ func (s *Server) createRouter() router.Router {
 
 	// Add RequestID middleware first if enabled, so we could use it in other middlewares, e.g. logger
 	if s.globalConfig.RequestID {
-		r.Use(middleware.RequestID)
+		r.Use("*", middleware.RequestID)
 	}
 
 	r.Use(
+		"*",
 		middleware.NewStats(s.statsClient).Handler,
 		middleware.NewLogger().Handler,
 		middleware.NewRecovery(errors.RecoveryHandler),
@@ -288,7 +289,7 @@ func (s *Server) createRouter() router.Router {
 
 	// some routers may panic when have empty routes list, so add one dummy 404 route to avoid this
 	if r.RoutesCount() < 1 {
-		r.Any("/", errors.NotFound)
+		r.Any("*", "/", errors.NotFound)
 	}
 
 	return r

@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"net/http/pprof"
 
+	"github.com/go-chi/chi"
+
 	chiMiddleware "github.com/go-chi/chi/middleware"
 	"github.com/hellofresh/janus/pkg/api"
 	"github.com/hellofresh/janus/pkg/config"
@@ -67,6 +69,7 @@ func (s *Server) AddRoutes(r router.Router) {
 	// create authentication for Janus
 	guard := jwt.NewGuard(s.Credentials)
 	r.Use(
+		"*",
 		chiMiddleware.StripSlashes,
 		chiMiddleware.DefaultCompress,
 		middleware.NewLogger().Handler,
@@ -85,49 +88,49 @@ func (s *Server) AddRoutes(r router.Router) {
 }
 
 func (s *Server) addInternalPublicRoutes(r router.Router) {
-	r.GET("/", Home())
-	r.GET("/status", NewOverviewHandler(s.apiHandler.Cfgs))
-	r.GET("/status/{name}", NewStatusHandler(s.apiHandler.Cfgs))
+	r.GET("*", "/", Home())
+	r.GET("*", "/status", NewOverviewHandler(s.apiHandler.Cfgs))
+	r.GET("*", "/status/{name}", NewStatusHandler(s.apiHandler.Cfgs))
 	if obs.PrometheusExporter != nil {
-		r.Any("/metrics", obs.PrometheusExporter.ServeHTTP)
+		r.Any("*", "/metrics", obs.PrometheusExporter.ServeHTTP)
 	}
 }
 
 func (s *Server) addInternalAuthRoutes(r router.Router, guard jwt.Guard) {
 	handlers := jwt.Handler{Guard: guard}
-	r.POST("/login", handlers.Login(s.Credentials))
-	authGroup := r.Group("/auth")
-	{
-		authGroup.GET("/refresh_token", handlers.Refresh())
-	}
+	r.POST("*", "/login", handlers.Login(s.Credentials))
+	r.Group("*", "/auth", func(r chi.Router) {
+		r.Get("/refresh_token", handlers.Refresh())
+	})
 }
 
 func (s *Server) addInternalRoutes(r router.Router, guard jwt.Guard) {
 	log.Debug("Loading API Endpoints")
 
 	// APIs endpoints
-	groupAPI := r.Group("/apis")
-	groupAPI.Use(jwt.NewMiddleware(guard).Handler)
-	{
-		groupAPI.GET("/", s.apiHandler.Get())
-		groupAPI.GET("/{name}", s.apiHandler.GetBy())
-		groupAPI.POST("/", s.apiHandler.Post())
-		groupAPI.PUT("/{name}", s.apiHandler.PutBy())
-		groupAPI.DELETE("/{name}", s.apiHandler.DeleteBy())
-	}
+	r.Group("*", "/apis", func(r chi.Router) {
+		r.Use(jwt.NewMiddleware(guard).Handler)
+
+		r.Get("/", s.apiHandler.Get())
+		r.Get("/{name}", s.apiHandler.GetBy())
+		r.Post("/", s.apiHandler.Post())
+		r.Put("/{name}", s.apiHandler.PutBy())
+		r.Delete("/{name}", s.apiHandler.DeleteBy())
+	})
 
 	if s.profilingEnabled {
-		groupProfiler := r.Group("/debug/pprof")
-		if !s.profilingPublic {
-			groupProfiler.Use(jwt.NewMiddleware(guard).Handler)
-		}
-		{
-			groupProfiler.GET("/*", pprof.Index)
-			groupProfiler.GET("/cmdline", pprof.Cmdline)
-			groupProfiler.GET("/profile", pprof.Profile)
-			groupProfiler.GET("/symbol", pprof.Symbol)
-			groupProfiler.GET("/trace", pprof.Trace)
-		}
+		r.Group("*", "/debug/pprof", func(r chi.Router) {
+			if !s.profilingPublic {
+				r.Use(jwt.NewMiddleware(guard).Handler)
+			}
+
+			r.Get("/*", pprof.Index)
+			r.Get("/cmdline", pprof.Cmdline)
+			r.Get("/profile", pprof.Profile)
+			r.Get("/symbol", pprof.Symbol)
+			r.Get("/trace", pprof.Trace)
+
+		})
 	}
 }
 

@@ -101,7 +101,7 @@ func (c *APIHandler) PutBy() http.HandlerFunc {
 		existingCfg := c.findByListenPath(cfg.Proxy.ListenPath)
 		span.End()
 
-		if existingCfg != nil && existingCfg.Name != cfg.Name {
+		if existingCfg != nil && existingCfg.Name != cfg.Name && existingCfg.Proxy.Hosts[0] == cfg.Proxy.Hosts[0] {
 			errors.Handler(w, r, api.ErrAPIListenPathExists)
 			return
 		}
@@ -192,7 +192,7 @@ func (c *APIHandler) exists(cfg *api.Definition) (bool, error) {
 			return true, api.ErrAPINameExists
 		}
 
-		if storedCfg.Proxy.ListenPath == cfg.Proxy.ListenPath {
+		if storedCfg.Proxy.ListenPath == cfg.Proxy.ListenPath && storedCfg.Proxy.Hosts[0] == cfg.Proxy.Hosts[0] {
 			return true, api.ErrAPIListenPathExists
 		}
 	}

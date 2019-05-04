@@ -6,6 +6,7 @@ import (
 
 	"github.com/asaskevich/govalidator"
 	"github.com/globalsign/mgo"
+	"github.com/go-chi/chi"
 	"github.com/hellofresh/janus/pkg/config"
 	"github.com/hellofresh/janus/pkg/jwt"
 	"github.com/hellofresh/janus/pkg/plugin"
@@ -167,13 +168,12 @@ func loadOAuthEndpoints(router router.Router, repo Repository, cred config.Crede
 
 	guard := jwt.NewGuard(cred)
 	oAuthHandler := NewController(repo)
-	oauthGroup := router.Group("/oauth/servers")
-	oauthGroup.Use(jwt.NewMiddleware(guard).Handler)
-	{
-		oauthGroup.GET("/", oAuthHandler.Get())
-		oauthGroup.GET("/{name}", oAuthHandler.GetBy())
-		oauthGroup.POST("/", oAuthHandler.Post())
-		oauthGroup.PUT("/{name}", oAuthHandler.PutBy())
-		oauthGroup.DELETE("/{name}", oAuthHandler.DeleteBy())
-	}
+	router.Group("*", "/oauth/servers", func(r chi.Router) {
+		r.Use(jwt.NewMiddleware(guard).Handler)
+		r.Get("/", oAuthHandler.Get())
+		r.Get("/{name}", oAuthHandler.GetBy())
+		r.Post("/", oAuthHandler.Post())
+		r.Put("/{name}", oAuthHandler.PutBy())
+		r.Delete("/{name}", oAuthHandler.DeleteBy())
+	})
 }
